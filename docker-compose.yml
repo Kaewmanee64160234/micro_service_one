@@ -1,0 +1,132 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: hotel_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: userpassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # phpMyAdmin for MySQL Management
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: rootpassword
+    ports:
+      - "8080:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # RabbitMQ for Message Brokering
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"     # RabbitMQ
+      - "15672:15672"   # RabbitMQ Management
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Hotel Management UI (Vue.js Frontend)
+  hotel-ui:
+    build: ./hotel-management-ui
+    container_name: hotel-management-ui
+    ports:
+      - "3000:80"
+    depends_on:
+      - hotel-service
+      - finance-service
+      - customer-service
+
+  # Hotel Service (Room Booking)
+  hotel-service:
+    build: ./hotel-service
+    container_name: hotel-service
+    ports:
+      - "5001:5001"
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_USER: user
+      MYSQL_PASSWORD: userpassword
+      MYSQL_DB: hotel_db
+      RABBITMQ_URL: amqp://rabbitmq:5672
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # Finance Service (Handle Financial Transactions)
+  finance-service:
+    build: ./finance-service
+    container_name: finance-service
+    ports:
+      - "5002:5002"
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_USER: user
+      MYSQL_PASSWORD: userpassword
+      MYSQL_DB: hotel_db
+      RABBITMQ_URL: amqp://rabbitmq:5672
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # Customer Service (Manage Customer Information)
+  customer-service:
+    build: ./customer-service
+    container_name: customer-service
+    ports:
+      - "5003:5003"
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_USER: user
+      MYSQL_PASSWORD: userpassword
+      MYSQL_DB: hotel_db
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # Booking Service (Create and Manage Bookings)
+  booking-service:
+    build: ./booking-service
+    container_name: booking-service
+    ports:
+      - "5004:5004"
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_USER: user
+      MYSQL_PASSWORD: userpassword
+      MYSQL_DB: hotel_db
+      RABBITMQ_URL: amqp://rabbitmq:5672
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  mysql_data:

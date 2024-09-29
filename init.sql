@@ -1,0 +1,19 @@
+-- init.sql
+CREATE TABLE IF NOT EXISTS bookings (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  room_id INT NOT NULL,
+  guest_name VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS finance (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  booking_id INT NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  FOREIGN KEY (booking_id) REFERENCES bookings(id)
+);
+
+CREATE TABLE IF NOT EXISTS customers (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL
+);
